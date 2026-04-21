@@ -10,7 +10,7 @@ st.title("📚 Könyv Adatbázis")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Meglévő adatok beolvasása
-existing_data = conn.read(worksheet="Sheet1", usecols=[0, 1], ttl=5)
+existing_data = conn.read(worksheet="Munkalap1", usecols=[0, 1], ttl=5)
 existing_data = existing_data.dropna(how="all")
 
 st.write("Illeszd be a könyv adatait:")
