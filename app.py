@@ -1,33 +1,39 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 
 st.set_page_config(page_title="Anyu Könyvtára", page_icon="📚")
 
-# Ez a rész felel azért, hogy az adatok ne vesszenek el frissítéskor
-if 'konyvek' not in st.session_state:
-    st.session_state.konyvek = []
+st.title("📚 Könyv Adatbázis")
 
-st.title("📚 Könyvtár Mentés Teszt")
+# Kapcsolat létrehozása a Google Táblázattal
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Adatbevitel
-cime = st.text_input("Könyv címe:")
-szerzo = st.text_input("Szerző:")
+# Meglévő adatok beolvasása
+existing_data = conn.read(worksheet="Sheet1", usecols=[0, 1], ttl=5)
+existing_data = existing_data.dropna(how="all")
 
-if st.button("Hozzáadás a listához"):
-    if cime:
-        # Új könyv hozzáadása a memóriához
-        uj_konyv = {"cim": cime, "szerzo": szerzo}
-        st.session_state.konyvek.append(uj_konyv)
-        st.success(f"Sikeresen hozzáadva: {cime}")
+st.write("Illeszd be a könyv adatait:")
+
+# Adatbevitel (a Pixel telefonon itt tud beilleszteni a Lens-ből)
+uj_cim = st.text_input("Könyv címe:")
+uj_szerzo = st.text_input("Szerző:")
+
+if st.button("💾 Mentés az adatbázisba"):
+    if uj_cim:
+        # Új sor előkészítése
+        new_row = pd.DataFrame([{"Cím": uj_cim, "Szerző": uj_szerzo}])
+        
+        # Hozzáadás a táblázathoz
+        updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+        conn.update(worksheet="Sheet1", data=updated_df)
+        
+        st.success(f"'{uj_cim}' elmentve az adatbázisba!")
         st.balloons()
+        st.rerun() # Frissíti az oldalt, hogy látszódjon az új könyv
     else:
-        st.error("A címet kötelező kitölteni!")
+        st.error("A címet kötelező megadni!")
 
 st.divider()
-st.subheader("📋 Regisztrált könyvek listája")
-
-# Itt jelenítjük meg a listát
-if st.session_state.konyvek:
-    for i, konyv in enumerate(reversed(st.session_state.konyvek)):
-        st.info(f"{len(st.session_state.konyvek) - i}. {konyv['cim']} (Szerző: {konyv['szerzo']})")
-else:
-    st.write("Még nincs semmi a listában.")
+st.subheader("📋 A jelenlegi könyvtár:")
+st.dataframe(existing_data, use_container_width=True)
