@@ -17,7 +17,7 @@ except Exception as e:
     st.stop()
 
 st.title("📚 Drory AI Könyvtár")
-st.write("Szia Anya! Csak fotózd le a könyv borítóját, és én elmentem neked!")
+st.write("Szia Szarah! Csak fotózd le a könyv borítóját, és én elmentem neked!")
 
 # --- ADATBÁZIS KAPCSOLAT ---
 try:
