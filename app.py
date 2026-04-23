@@ -1,39 +1,55 @@
 import streamlit as st
+import google.generativeai as genai
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+from PIL import Image
+import io
 
-st.set_page_config(page_title="Anyu Könyvtára", page_icon="📚")
+st.set_page_config(page_title="Drory Könyvtár AI", page_icon="📚")
 
-st.title("📚 Könyv Adatbázis")
+# --- AI BEÁLLÍTÁS ---
+# Ide kell majd az API kulcsod az AI Studióból!
+os_api_key = st.secrets["GEMINI_API_KEY"]
+genai.configure(api_key=os_api_key)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Kapcsolat létrehozása a Google Táblázattal
+st.title("📚 Drory AI Könyvtár")
+
+# --- ADATBÁZIS KAPCSOLAT ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Meglévő adatok beolvasása
-existing_data = conn.read(worksheet="Munkalap1", usecols=[0, 1], ttl=5)
-existing_data = existing_data.dropna(how="all")
+# --- FOTÓ KÉSZÍTÉSE ---
+st.subheader("Fényképezd le a könyv borítóját!")
+img_file = st.camera_input("Kamera megnyitása")
 
-st.write("Illeszd be a könyv adatait:")
+if img_file:
+    st.info("AI elemzés folyamatban... 🤖")
+    
+    # Kép előkészítése az AI-nak
+    img = Image.open(img_file)
+    
+    # AI kérése: Ismerje fel a könyvet
+    prompt = "Identify this book from the image. Provide the Title, Author, and ISBN if possible in this format: Title: [title], Author: [author], ISBN: [isbn]"
+    response = model.generate_content([prompt, img])
+    
+    # Adatok kinyerése a válaszból
+    ai_text = response.text
+    st.write("AI válasza:", ai_text)
 
-# Adatbevitel (a Pixel telefonon itt tud beilleszteni a Lens-ből)
-uj_cim = st.text_input("Könyv címe:")
-uj_szerzo = st.text_input("Szerző:")
-
-if st.button("💾 Mentés az adatbázisba"):
-    if uj_cim:
-        # Új sor előkészítése
-        new_row = pd.DataFrame([{"Cím": uj_cim, "Szerző": uj_szerzo}])
-        
-        # Hozzáadás a táblázathoz
+    # Egyszerű mentés gomb
+    if st.button("Mentés a Google Táblázatba"):
+        # Itt elmentjük a táblázatba (feltételezve, hogy a Munkalap1 létezik)
+        existing_data = conn.read(worksheet="Munkalap1")
+        new_row = pd.DataFrame([{"Cím": ai_text, "Dátum": pd.Timestamp.now()}])
         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-        conn.update(worksheet="Sheet1", data=updated_df)
-        
-        st.success(f"'{uj_cim}' elmentve az adatbázisba!")
+        conn.update(worksheet="Munkalap1", data=updated_df)
+        st.success("Sikeresen elmentve!")
         st.balloons()
-        st.rerun() # Frissíti az oldalt, hogy látszódjon az új könyv
-    else:
-        st.error("A címet kötelező megadni!")
 
 st.divider()
-st.subheader("📋 A jelenlegi könyvtár:")
-st.dataframe(existing_data, use_container_width=True)
+st.subheader("📋 Eddigi könyvek listája")
+try:
+    df = conn.read(worksheet="Munkalap1")
+    st.dataframe(df)
+except:
+    st.info("Még nincs mentett adat a táblázatban.")
